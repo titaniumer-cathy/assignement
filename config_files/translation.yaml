@@ -1,7 +1,5 @@
-description: 'Getting started'
-prompts:
-  - 'Convert this English to {language}: {input}'
-  - 'Translate to {language}: {input}'
+description: 'Translation'
+prompts: 'Convert this English to {language}: {input}'
 
 providers:
   - openai:gpt-4o-mini

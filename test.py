@@ -52,18 +52,17 @@ def test_have_description(test_yaml):
 def test_eval_prompt(test_yaml):
 
     prompt_config = load_prompt_from_yaml(test_yaml)
-    prompts = prompt_config.prompts
+    prompt = prompt_config.prompt
     providers = prompt_config.providers
     tests = prompt_config.tests
-    for prompt in prompts:
-        for provider in providers:
-            logger.info('Testing Prompt: {prompt} with provider: {provider}')
-            for test in tests:
-                answer = getattr(CallProvider(), provider.split(":")[0])(provider.split(":")[1], prompt.format(**test.vars))
-                for a in test.asserts:
-                    if a['type']=="contain":
-                        assert a['value'] in answer
-                time.sleep(1)
+    for provider in providers:
+        logger.info('Testing Prompt: {prompt} with provider: {provider}')
+        for test in tests:
+            answer = getattr(CallProvider(), provider.split(":")[0])(provider.split(":")[1], prompt.format(**test.vars))
+            for a in test.asserts:
+                if a['type']=="contain":
+                    assert a['value'] in answer
+            time.sleep(1)
                     
 @pytest.mark.parametrize("test_yaml", yaml_files, ids=lambda tc: yaml.safe_load(open(tc, "r"))["description"])
 def test_eval_prompt(test_yaml):
@@ -75,7 +74,7 @@ def test_eval_prompt(test_yaml):
         logger.debug(f"Loaded prompt config: {prompt_config}")
         
         # Initialize test components
-        prompts = prompt_config.prompts
+        prompt = prompt_config.prompt
         providers = prompt_config.providers
         tests = prompt_config.tests
         
@@ -84,80 +83,79 @@ def test_eval_prompt(test_yaml):
         start_time = time.time()
         
         # Iterate through all test combinations
-        for prompt in prompts:
-            for provider in providers:
-                provider_type = provider.split(":")[0]
-                provider_name = provider.split(":")[1]
-                logger.info(f"Testing Prompt: '{prompt}' with Provider: {provider}")
+        for provider in providers:
+            provider_type = provider.split(":")[0]
+            provider_name = provider.split(":")[1]
+            logger.info(f"Testing Prompt: '{prompt}' with Provider: {provider}")
+            
+            for test in tests:
+                total_tests += 1
+                # Format the prompt with test variables
+                formatted_prompt = prompt.format(**test.vars)
+                logger.debug(f"Test Variables: {test.vars}")
+                logger.debug(f"Formatted Prompt: {formatted_prompt}")
                 
-                for test in tests:
-                    total_tests += 1
-                    # Format the prompt with test variables
-                    formatted_prompt = prompt.format(**test.vars)
-                    logger.debug(f"Test Variables: {test.vars}")
-                    logger.debug(f"Formatted Prompt: {formatted_prompt}")
-                    
-                    retry = 3
-                    loop = 0
-                    last_exception = None
+                retry = 3
+                loop = 0
+                last_exception = None
 
-                    while loop < retry:
-                        try:
-                            # Attempt provider call
-                            logger.info(f"Attempt {loop+1}/{retry} with {provider}")
-                            call_start = time.time()
-                            answer = getattr(CallProvider(), provider_type)(provider_name, formatted_prompt)
-                            call_duration = time.time() - call_start
-                            
-                            # Log successful call
-                            logger.debug(f"Provider call succeeded in {call_duration:.2f}s")
-                            logger.debug(f"Response: {answer}")
-
-                            # Validate assertions
-                            all_assertions_passed = True
-                            for assertion in test.asserts:
-                                assert_type = assertion['type']
-                                expected = assertion['value']
-                                logger.debug(f"Checking {assert_type}: expecting '{expected}'")
-                                
-                                try:
-                                    if assert_type == "contain":
-                                        assert expected in answer, f"'{expected}' not found in response"
-                                        logger.debug("✅ Contain assertion passed")
-                                    # Add more assertion types here
-                                    
-                                except AssertionError as ae:
-                                    logger.warning(f"Assertion failed: {str(ae)}")
-                                    all_assertions_passed = False
-                                    last_exception = ae
-
-                            if all_assertions_passed:
-                                logger.info("All assertions passed!")
-                                break  # Exit retry loop on success
-
-                        except Exception as e:
-                            logger.error(f"🚨 Provider call failed: {str(e)}")
-                            last_exception = e
-                        finally:
-                            loop += 1
-                            if loop < retry and last_exception is None:
-                                time.sleep(1)  # Rate limiting between attempts
-                            elif loop < retry:
-                                logger.info(f"⏳ Retrying in 1 second...")
-                                time.sleep(1)
-
-                    # Final failure check after all retries
-                    if loop >= retry:
-                        if last_exception:
-                            error_msg = f"Failed after {retry} attempts. Last error: {str(last_exception)}"
-                        else:
-                            error_msg = f"Failed after {retry} attempts. Assertions did not pass"
-                        pytest.fail(f"{error_msg} | Provider: {provider_name} | Prompt: {formatted_prompt}")
+                while loop < retry:
+                    try:
+                        # Attempt provider call
+                        logger.info(f"Attempt {loop+1}/{retry} with {provider}")
+                        call_start = time.time()
+                        answer = getattr(CallProvider(), provider_type)(provider_name, formatted_prompt)
+                        call_duration = time.time() - call_start
                         
+                        # Log successful call
+                        logger.debug(f"Provider call succeeded in {call_duration:.2f}s")
+                        logger.debug(f"Response: {answer}")
+
+                        # Validate assertions
+                        all_assertions_passed = True
+                        for assertion in test.asserts:
+                            assert_type = assertion['type']
+                            expected = assertion['value']
+                            logger.debug(f"Checking {assert_type}: expecting '{expected}'")
+                            
+                            try:
+                                if assert_type == "contain":
+                                    assert expected in answer, f"'{expected}' not found in response"
+                                    logger.debug("✅ Contain assertion passed")
+                                # Add more assertion types here
+                                
+                            except AssertionError as ae:
+                                logger.warning(f"Assertion failed: {str(ae)}")
+                                all_assertions_passed = False
+                                last_exception = ae
+
+                        if all_assertions_passed:
+                            logger.info("All assertions passed!")
+                            break  # Exit retry loop on success
+
+                    except Exception as e:
+                        logger.error(f"🚨 Provider call failed: {str(e)}")
+                        last_exception = e
+                    finally:
+                        loop += 1
+                        if loop < retry and last_exception is None:
+                            time.sleep(1)  # Rate limiting between attempts
+                        elif loop < retry:
+                            logger.info(f"⏳ Retrying in 1 second...")
+                            time.sleep(1)
+
+                # Final failure check after all retries
+                if loop >= retry:
+                    if last_exception:
+                        error_msg = f"Failed after {retry} attempts. Last error: {str(last_exception)}"
+                    else:
+                        error_msg = f"Failed after {retry} attempts. Assertions did not pass"
+                    pytest.fail(f"{error_msg} | Provider: {provider_name} | Prompt: {formatted_prompt}")
+                    
                     
         # Final test summary
         duration = time.time() - start_time
-        logger.info(f"Test completed: {total_tests} assertions across {len(prompts)} prompts")
+        logger.info(f"Test completed: {total_tests} assertions for prompt: {prompt}")
         logger.info(f"Total test duration: {duration:.2f} seconds")
         
     except Exception as e:

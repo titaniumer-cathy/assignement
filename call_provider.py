@@ -4,7 +4,7 @@ import os
 
 class CallProvider:
 
-    def openai(self, model_name, prompt):
+    def openai(self, model_name: str, prompt: str) -> str:
         client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
         completion = client.chat.completions.create(
         model=model_name,

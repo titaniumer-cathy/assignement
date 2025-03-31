@@ -10,7 +10,7 @@ class PromptTest:
 @dataclass
 class Prompt:
     description: str
-    prompts: List[str]
+    prompt: str
     providers: List[str]
     tests: List[PromptTest]
 
@@ -29,7 +29,7 @@ def load_prompt_from_yaml(file_path: str) -> Prompt:
     
     return Prompt(
         description=data["description"],
-        prompts=data["prompts"],
+        prompt=data["prompts"],
         providers=data["providers"],
         tests=tests
     )
