@@ -29,7 +29,7 @@ def load_prompt_from_yaml(file_path: str) -> Prompt:
     
     return Prompt(
         description=data["description"],
-        prompt=data["prompts"],
+        prompt=data["prompt"],
         providers=data["providers"],
         tests=tests
     )

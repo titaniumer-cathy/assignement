@@ -1,5 +1,5 @@
 description: 'Translation'
-prompts: 'Convert this English to {language}: {input}'
+prompt: 'Convert this English to {language}: {input}'
 
 providers:
   - openai:gpt-4o-mini
