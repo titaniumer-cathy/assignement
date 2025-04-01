@@ -10,7 +10,8 @@ A streamlined pipeline for managing and deploying AI prompts with automated test
 2. **Automated Validation**  
    ![GitHub Actions](https://img.shields.io/badge/-GitHub%20Workflow%201-blue) → `pytest` evaluation
 
-3. **Cloud Deployment**  
+3. **Cloud Deployment**
+    Run cloud deployment if all tests passed. Will keep cloud files the same as config_files
    ![GitHub Actions](https://img.shields.io/badge/-GitHub%20Workflow%202-blue) → Deploy to AWS S3
 
 4. **Production Access**  
