@@ -1,0 +1,19 @@
+description: 'Translation'
+prompt: 'Convert this English to {language}: {input}'
+
+providers:
+  - openai:gpt-4o-mini
+
+tests:
+  - vars:
+      language: French
+      inpu: Hello world
+    asserts:
+      - type: contains
+        value: 'Bonjour le monde'
+  - vars:
+      language: Spanish
+      input: Where is the library?
+    asserts:
+      - type: contains
+        value: 'Dónde está la biblioteca'
