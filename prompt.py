@@ -2,11 +2,13 @@ from dataclasses import dataclass
 import yaml
 from typing import List
 
+# storing test information
 @dataclass
 class PromptTest:
     vars: dict
     asserts: List[dict]
 
+# prompt information
 @dataclass
 class Prompt:
     description: str
@@ -14,6 +16,7 @@ class Prompt:
     providers: List[str]
     tests: List[PromptTest]
 
+# load function
 def load_prompt_from_yaml(file_path: str) -> Prompt:
     with open(file_path, 'r') as f:
         data = yaml.safe_load(f)

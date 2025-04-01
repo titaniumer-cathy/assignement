@@ -20,50 +20,47 @@ yaml_files = [
     if f.endswith(('.yaml', '.yml'))
 ]
 
+def is_fully_formatted(format_str: str, *args, **kwargs) -> bool:
+    """
+    Check if the string can be formatted without missing arguments.
+    
+    Returns:
+        True if formatting succeeds, False otherwise.
+    """
+    try:
+        format_str.format(*args, **kwargs)
+        return True
+    except (KeyError, IndexError):
+        return False
+
+
+# test yaml config files under foler config_files for description field
 @pytest.mark.parametrize("test_yaml", yaml_files)
 def test_have_description(test_yaml):
     """Test that all YAML config files contain a description field"""
     try:
         # Log test start
         logger.info(f"Starting test for file: {test_yaml}")
-        
         # Load YAML content
         with open(test_yaml, "r") as f:
-            logger.debug(f"Opening file: {test_yaml}")
             data = yaml.safe_load(f)
-            logger.debug(f"Loaded YAML content: {data}")
-        
+    except:
+        logger.error(f"YAML parsing error in {test_yaml}")
+        pytest.fail(f"Invalid YAML syntax in {test_yaml}")
+    try:
         # Validate description exists
         logger.info("Checking for description field")
         assert "description" in data, f"Missing description in {test_yaml}"
         
         # Log success details
         logger.info(f"Description found: {data['description']}")
-        logger.debug(f"Full description content: {data['description']}")
 
-    except yaml.YAMLError as ye:
-        logger.error(f"YAML parsing error in {test_yaml}: {str(ye)}")
-        pytest.fail(f"Invalid YAML syntax in {test_yaml}")
     except Exception as e:
         logger.error(f"Unexpected error processing {test_yaml}: {str(e)}", exc_info=True)
         pytest.fail(f"Test failed for {test_yaml} due to unexpected error")
 
-@pytest.mark.parametrize("test_yaml", yaml_files, ids=lambda tc: yaml.safe_load(open(tc, "r"))["description"])
-def test_eval_prompt(test_yaml):
 
-    prompt_config = load_prompt_from_yaml(test_yaml)
-    prompt = prompt_config.prompt
-    providers = prompt_config.providers
-    tests = prompt_config.tests
-    for provider in providers:
-        logger.info('Testing Prompt: {prompt} with provider: {provider}')
-        for test in tests:
-            answer = getattr(CallProvider(), provider.split(":")[0])(provider.split(":")[1], prompt.format(**test.vars))
-            for a in test.asserts:
-                if a['type']=="contain":
-                    assert a['value'] in answer
-            time.sleep(1)
-                    
+# evaluate all prompts in yaml config files under foler "config_files"                
 @pytest.mark.parametrize("test_yaml", yaml_files, ids=lambda tc: yaml.safe_load(open(tc, "r"))["description"])
 def test_eval_prompt(test_yaml):
     """Test all prompts against providers with test cases from YAML"""
@@ -71,8 +68,11 @@ def test_eval_prompt(test_yaml):
         # Load and log test configuration
         logger.info(f"Starting evaluation for config: {test_yaml}")
         prompt_config = load_prompt_from_yaml(test_yaml)
-        logger.debug(f"Loaded prompt config: {prompt_config}")
-        
+    except Exception as e:
+        logger.error(f"Yaml format error: {str(e)} for file: {test_yaml}", exc_info=True)
+        pytest.fail(f"Test setup failed: {str(e)}, for file: {test_yaml}")
+
+    try:
         # Initialize test components
         prompt = prompt_config.prompt
         providers = prompt_config.providers
@@ -91,9 +91,8 @@ def test_eval_prompt(test_yaml):
             for test in tests:
                 total_tests += 1
                 # Format the prompt with test variables
+                
                 formatted_prompt = prompt.format(**test.vars)
-                logger.debug(f"Test Variables: {test.vars}")
-                logger.debug(f"Formatted Prompt: {formatted_prompt}")
                 
                 retry = 3
                 loop = 0
@@ -103,26 +102,18 @@ def test_eval_prompt(test_yaml):
                     try:
                         # Attempt provider call
                         logger.info(f"Attempt {loop+1}/{retry} with {provider}")
-                        call_start = time.time()
                         answer = getattr(CallProvider(), provider_type)(provider_name, formatted_prompt)
-                        call_duration = time.time() - call_start
-                        
-                        # Log successful call
-                        logger.debug(f"Provider call succeeded in {call_duration:.2f}s")
-                        logger.debug(f"Response: {answer}")
 
                         # Validate assertions
                         all_assertions_passed = True
                         for assertion in test.asserts:
                             assert_type = assertion['type']
                             expected = assertion['value']
-                            logger.debug(f"Checking {assert_type}: expecting '{expected}'")
                             
                             try:
                                 if assert_type == "contain":
                                     assert expected in answer, f"'{expected}' not found in response"
-                                    logger.debug("✅ Contain assertion passed")
-                                # Add more assertion types here
+                                # Todo: Add more assertion types here
                                 
                             except AssertionError as ae:
                                 logger.warning(f"Assertion failed: {str(ae)}")
@@ -134,14 +125,14 @@ def test_eval_prompt(test_yaml):
                             break  # Exit retry loop on success
 
                     except Exception as e:
-                        logger.error(f"🚨 Provider call failed: {str(e)}")
+                        logger.error(f"Provider call failed: {str(e)}")
                         last_exception = e
                     finally:
                         loop += 1
                         if loop < retry and last_exception is None:
                             time.sleep(1)  # Rate limiting between attempts
                         elif loop < retry:
-                            logger.info(f"⏳ Retrying in 1 second...")
+                            logger.info(f"Retrying in 1 second...")
                             time.sleep(1)
 
                 # Final failure check after all retries
@@ -152,12 +143,12 @@ def test_eval_prompt(test_yaml):
                         error_msg = f"Failed after {retry} attempts. Assertions did not pass"
                     pytest.fail(f"{error_msg} | Provider: {provider_name} | Prompt: {formatted_prompt}")
                     
-                    
+                  
         # Final test summary
         duration = time.time() - start_time
         logger.info(f"Test completed: {total_tests} assertions for prompt: {prompt}")
         logger.info(f"Total test duration: {duration:.2f} seconds")
-        
     except Exception as e:
         logger.error(f"Critical error in test setup: {str(e)}", exc_info=True)
         pytest.fail(f"Test setup failed: {str(e)}")
+   
